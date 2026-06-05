@@ -131,6 +131,109 @@ const scaleUp = {
   visible: { opacity: 1, scale: 1, transition: { duration: 0.65, ease: "backOut" } },
 }
 
+// ─── Deconstruct Background ───────────────────────────────────────────────────
+const DCOLS = 10
+const DROWS = 7
+const DTILES = Array.from({ length: DCOLS * DROWS }, (_, i) => {
+  const col = i % DCOLS
+  const row = Math.floor(i / DCOLS)
+  const cx = (DCOLS - 1) / 2
+  const cy = (DROWS - 1) / 2
+  const dx = col - cx
+  const dy = row - cy
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  const maxDist = Math.sqrt(cx * cx + cy * cy)
+  const normDist = dist / maxDist
+  const angle = Math.atan2(dy, dx)
+  const flyDist = 320 + normDist * 200
+  const flyX = Math.round(Math.cos(angle) * flyDist)
+  const flyY = Math.round(Math.sin(angle) * flyDist)
+  const rotDir = (col + row) % 2 === 0 ? 1 : -1
+  const rotate = rotDir * (12 + normDist * 32)
+  const delay = (1 - normDist) * 0.55
+  const bgX = DCOLS <= 1 ? 0 : (col / (DCOLS - 1)) * 100
+  const bgY = DROWS <= 1 ? 0 : (row / (DROWS - 1)) * 100
+  return { flyX, flyY, rotate, delay, bgX, bgY }
+})
+
+function DeconstructBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "grid",
+          gridTemplateColumns: `repeat(${DCOLS}, 1fr)`,
+          gridTemplateRows: `repeat(${DROWS}, 1fr)`,
+        }}
+      >
+        {DTILES.map((tile, i) => (
+          <motion.div
+            key={i}
+            style={{
+              backgroundImage: "url('/images/hero-architecture.jpg')",
+              backgroundSize: `${DCOLS * 100}% ${DROWS * 100}%`,
+              backgroundPosition: `${tile.bgX}% ${tile.bgY}%`,
+            }}
+            animate={{
+              x: [0, tile.flyX, tile.flyX, 0],
+              y: [0, tile.flyY, tile.flyY, 0],
+              opacity: [1, 0, 0, 1],
+              rotate: [0, tile.rotate, tile.rotate, 0],
+              scale: [1, 0.12, 0.12, 1],
+            }}
+            transition={{
+              duration: 10,
+              delay: tile.delay,
+              repeat: Infinity,
+              times: [0, 0.28, 0.58, 1],
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Blueprint grid — appears when tiles are scattered */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(210,105,30,0.15) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(210,105,30,0.15) 1px, transparent 1px)
+          `,
+          backgroundSize: `${100 / DCOLS}% ${100 / DROWS}%`,
+        }}
+        animate={{ opacity: [0, 0, 0.9, 0.9, 0] }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          times: [0, 0.24, 0.38, 0.55, 0.72],
+        }}
+      />
+
+      {/* Orange scan line sweeping during reconstruction */}
+      <motion.div
+        className="absolute inset-x-0 pointer-events-none"
+        style={{
+          height: 3,
+          top: 0,
+          background: "linear-gradient(90deg, transparent 0%, rgba(210,105,30,0.95) 50%, transparent 100%)",
+          boxShadow: "0 0 28px rgba(210,105,30,0.7), 0 0 70px rgba(210,105,30,0.3)",
+        }}
+        animate={{ top: ["-3px", "100%"] }}
+        transition={{
+          duration: 4,
+          delay: 5.8,
+          repeat: Infinity,
+          repeatDelay: 6,
+          ease: "linear",
+        }}
+      />
+    </div>
+  )
+}
+
 // ─── Rotating Cube ────────────────────────────────────────────────────────────
 function RotatingCube() {
   const faces = [
@@ -232,17 +335,14 @@ export default function NeuroDesignShowcase() {
 
       {/* ── HERO ── */}
       <section className="relative min-h-screen flex items-center px-5 py-24 overflow-hidden">
-        {/* BG image */}
+        {/* BG image — deconstruct/reconstruct effect */}
         <div className="absolute inset-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/images/hero-architecture.jpg')" }}
-          />
+          <DeconstructBackground />
           <div
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(135deg, rgba(8,17,30,0.97) 0%, rgba(8,17,30,0.88) 55%, rgba(210,105,30,0.08) 100%)",
+                "linear-gradient(135deg, rgba(8,17,30,0.88) 0%, rgba(8,17,30,0.60) 55%, rgba(210,105,30,0.04) 100%)",
             }}
           />
         </div>
