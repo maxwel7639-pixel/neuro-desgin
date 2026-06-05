@@ -53,9 +53,9 @@ function TiltCard3D({
     let t = 0
     let rafId: number
     const tick = () => {
-      t += 0.012
-      rotX.set(Math.sin(t * 0.9) * 4)
-      rotY.set(Math.cos(t * 0.6) * 7)
+      t += 0.007
+      rotX.set(Math.sin(t * 0.65) * 3)
+      rotY.set(Math.cos(t * 0.45) * 5.5)
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
@@ -159,6 +159,7 @@ const DTILES = Array.from({ length: DCOLS * DROWS }, (_, i) => {
 function DeconstructBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
+      {/* CSS-animated tiles — GPU accelerated, no JS overhead */}
       <div
         style={{
           position: "absolute",
@@ -169,50 +170,35 @@ function DeconstructBackground() {
         }}
       >
         {DTILES.map((tile, i) => (
-          <motion.div
+          <div
             key={i}
+            className="tile-anim"
             style={{
+              "--tx": `${tile.flyX}px`,
+              "--ty": `${tile.flyY}px`,
+              "--tr": `${tile.rotate}deg`,
+              animationDelay: `${tile.delay}s`,
               backgroundImage: "url('/images/hero-architecture.jpg')",
               backgroundSize: `${DCOLS * 100}% ${DROWS * 100}%`,
               backgroundPosition: `${tile.bgX}% ${tile.bgY}%`,
-            }}
-            animate={{
-              x: [0, tile.flyX, tile.flyX, 0],
-              y: [0, tile.flyY, tile.flyY, 0],
-              opacity: [1, 0, 0, 1],
-              rotate: [0, tile.rotate, tile.rotate, 0],
-              scale: [1, 0.12, 0.12, 1],
-            }}
-            transition={{
-              duration: 10,
-              delay: tile.delay,
-              repeat: Infinity,
-              times: [0, 0.28, 0.58, 1],
-              ease: "easeInOut",
-            }}
+            } as React.CSSProperties}
           />
         ))}
       </div>
 
       {/* Blueprint grid — appears when tiles are scattered */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
+      <div
+        className="blueprint-anim absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(210,105,30,0.15) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(210,105,30,0.15) 1px, transparent 1px)
+            linear-gradient(rgba(210,105,30,0.18) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(210,105,30,0.18) 1px, transparent 1px)
           `,
           backgroundSize: `${100 / DCOLS}% ${100 / DROWS}%`,
         }}
-        animate={{ opacity: [0, 0, 0.9, 0.9, 0] }}
-        transition={{
-          duration: 10,
-          repeat: Infinity,
-          times: [0, 0.24, 0.38, 0.55, 0.72],
-        }}
       />
 
-      {/* Orange scan line sweeping during reconstruction */}
+      {/* Orange scan line — Framer Motion (1 element, negligible cost) */}
       <motion.div
         className="absolute inset-x-0 pointer-events-none"
         style={{
@@ -222,12 +208,56 @@ function DeconstructBackground() {
           boxShadow: "0 0 28px rgba(210,105,30,0.7), 0 0 70px rgba(210,105,30,0.3)",
         }}
         animate={{ top: ["-3px", "100%"] }}
-        transition={{
-          duration: 4,
-          delay: 5.8,
-          repeat: Infinity,
-          repeatDelay: 6,
-          ease: "linear",
+        transition={{ duration: 4, delay: 5.8, repeat: Infinity, repeatDelay: 6, ease: "linear" }}
+      />
+    </div>
+  )
+}
+
+// ─── Camera Room Background ───────────────────────────────────────────────────
+const ROOMS = [
+  { img: "/images/luxury-interior.jpg", dir: 1 },
+  { img: "/images/premium-space.jpg",   dir: -1 },
+  { img: "/images/hero-architecture.jpg", dir: 1 },
+]
+
+function CameraRoomBg() {
+  const [idx, setIdx] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % ROOMS.length), 6500)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {ROOMS.map((room, i) => (
+        <motion.div
+          key={room.img}
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url('${room.img}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+          animate={{
+            opacity: i === idx ? 1 : 0,
+            x: i === idx ? [`${room.dir * 2}%`, `${-room.dir * 2}%`] : `${room.dir * 3}%`,
+            scale: i === idx ? [1.06, 1.03] : 1.06,
+          }}
+          transition={{
+            opacity: { duration: 1.4, ease: "easeInOut" },
+            x: { duration: 7, ease: "easeInOut" },
+            scale: { duration: 7, ease: "easeInOut" },
+          }}
+        />
+      ))}
+      {/* Dark overlay for text readability */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(8,17,30,0.93) 0%, rgba(8,17,30,0.78) 50%, rgba(8,17,30,0.88) 100%)",
         }}
       />
     </div>
@@ -576,72 +606,89 @@ export default function NeuroDesignShowcase() {
                 desc: "Seu trabalho em Neuroarquitetura e revolucionario, moldando espacos que impactam o bem-estar.",
                 icon: Lightbulb,
                 color: "#D2691E",
+                image: "/images/hero-architecture.jpg",
+                bgPos: "center 40%",
               },
               {
                 title: "Visibilidade Comum",
                 desc: "Em um cenario digital saturado, ate os projetos mais inovadores se perdem em feeds genericos.",
                 icon: Users,
                 color: "#2E9E6B",
+                image: "/images/luxury-interior.jpg",
+                bgPos: "center center",
               },
               {
                 title: "Falta de Narrativa",
                 desc: "Imagens de alta qualidade sao essenciais, mas a ciencia por tras delas e o que realmente engaja.",
                 icon: Target,
                 color: "#D2691E",
+                image: "/images/premium-space.jpg",
+                bgPos: "center 60%",
               },
             ].map((card, index) => (
               <motion.div key={index} variants={scaleUp}>
                 <TiltCard3D autoWobble intensity={10}>
                   <div
-                    className="h-full rounded-2xl p-6 relative overflow-hidden"
+                    className="h-full rounded-2xl relative overflow-hidden"
                     style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.07)",
+                      border: "1px solid rgba(255,255,255,0.10)",
                       backdropFilter: "blur(22px)",
-                      transformStyle: "preserve-3d",
                     }}
                   >
+                    {/* Background photo */}
+                    <motion.div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `url('${card.image}')`,
+                        backgroundSize: "cover",
+                        backgroundPosition: card.bgPos,
+                      }}
+                      animate={{ scale: [1.04, 1.0, 1.04] }}
+                      transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: index * 1.2 }}
+                    />
+                    {/* Dark overlay */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: "linear-gradient(160deg, rgba(8,17,30,0.88) 0%, rgba(8,17,30,0.62) 60%, rgba(8,17,30,0.80) 100%)",
+                      }}
+                    />
+
                     {/* Top glow line */}
                     <motion.div
-                      className="absolute top-0 left-0 right-0 h-px"
-                      style={{
-                        background: `linear-gradient(90deg, transparent, ${card.color}, transparent)`,
-                      }}
+                      className="absolute top-0 left-0 right-0 h-px z-10"
+                      style={{ background: `linear-gradient(90deg, transparent, ${card.color}, transparent)` }}
                       animate={{ opacity: [0.2, 1, 0.2] }}
                       transition={{ duration: 2.5, repeat: Infinity, delay: index * 0.8 }}
                     />
 
-                    {/* Icon */}
-                    <motion.div
-                      className="mb-4 w-12 h-12 rounded-xl flex items-center justify-center"
-                      style={{
-                        background: `rgba(${card.color === "#D2691E" ? "210,105,30" : "46,158,107"},0.12)`,
-                        border: `1px solid rgba(${card.color === "#D2691E" ? "210,105,30" : "46,158,107"},0.25)`,
-                      }}
-                      animate={{ rotateY: [0, 360] }}
-                      transition={{ duration: 8, repeat: Infinity, ease: "linear", delay: index * 0.5 }}
-                    >
-                      <card.icon className="w-6 h-6" style={{ color: card.color }} />
-                    </motion.div>
+                    {/* Content */}
+                    <div className="relative z-10 p-6">
+                      {/* Icon */}
+                      <motion.div
+                        className="mb-4 w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{
+                          background: `rgba(${card.color === "#D2691E" ? "210,105,30" : "46,158,107"},0.18)`,
+                          border: `1px solid rgba(${card.color === "#D2691E" ? "210,105,30" : "46,158,107"},0.35)`,
+                          backdropFilter: "blur(8px)",
+                        }}
+                        animate={{ rotateY: [0, 360] }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear", delay: index * 0.5 }}
+                      >
+                        <card.icon className="w-6 h-6" style={{ color: card.color }} />
+                      </motion.div>
 
-                    <h3 className="font-bold text-lg mb-2" style={{ color: "#FFB347" }}>
-                      {card.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.52)" }}>
-                      {card.desc}
-                    </p>
-
-                    {/* Inner radial glow */}
-                    <div
-                      className="absolute inset-0 rounded-2xl pointer-events-none"
-                      style={{
-                        background: `radial-gradient(circle at 50% -10%, ${card.color}12, transparent 65%)`,
-                      }}
-                    />
+                      <h3 className="font-bold text-lg mb-2" style={{ color: "#FFB347" }}>
+                        {card.title}
+                      </h3>
+                      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.68)" }}>
+                        {card.desc}
+                      </p>
+                    </div>
 
                     {/* Bottom scan line */}
                     <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 z-10"
                       style={{
                         background: `linear-gradient(90deg, transparent, ${card.color}, transparent)`,
                         originX: "0.5",
@@ -658,8 +705,11 @@ export default function NeuroDesignShowcase() {
       </section>
 
       {/* ── SOLUCAO ── */}
-      <section className="py-20 md:py-28 px-5" style={{ background: "#F8F4EC" }}>
-        <div className="max-w-6xl mx-auto">
+      <section className="relative py-20 md:py-28 px-5 overflow-hidden">
+        {/* Camera panning through architecture rooms */}
+        <CameraRoomBg />
+
+        <div className="relative z-10 max-w-6xl mx-auto">
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -671,14 +721,14 @@ export default function NeuroDesignShowcase() {
               variants={fadeUp}
               className="inline-block text-sm font-bold px-4 py-1.5 rounded-full mb-4"
               style={{
-                background: "rgba(210,105,30,0.1)",
-                color: "#D2691E",
-                border: "1px solid rgba(210,105,30,0.3)",
+                background: "rgba(210,105,30,0.18)",
+                color: "#FFB347",
+                border: "1px solid rgba(210,105,30,0.4)",
               }}
             >
               A Solucao
             </motion.div>
-            <motion.h2 variants={fadeUp} className="text-3xl md:text-5xl font-black" style={{ color: "#0D1B2A" }}>
+            <motion.h2 variants={fadeUp} className="text-3xl md:text-5xl font-black text-white">
               Neuro-Design Showcase
             </motion.h2>
           </motion.div>
@@ -691,7 +741,7 @@ export default function NeuroDesignShowcase() {
               viewport={{ once: true }}
               variants={stagger}
             >
-              <motion.p variants={fadeUp} className="text-lg leading-relaxed mb-8" style={{ color: "#374151" }}>
+              <motion.p variants={fadeUp} className="text-lg leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.78)" }}>
                 Uma curadoria e representacao visual estrategica dos seus projetos, destacando os principios
                 neuroarquitetonicos aplicados e seus resultados tangiveis.
               </motion.p>
@@ -709,7 +759,7 @@ export default function NeuroDesignShowcase() {
                       animate={{
                         boxShadow: [
                           "0 0 0px rgba(46,158,107,0)",
-                          "0 0 20px rgba(46,158,107,0.6)",
+                          "0 0 20px rgba(46,158,107,0.7)",
                           "0 0 0px rgba(46,158,107,0)",
                         ],
                       }}
@@ -717,7 +767,7 @@ export default function NeuroDesignShowcase() {
                     >
                       <Check className="w-3 h-3 text-white" />
                     </motion.span>
-                    <span style={{ color: "#374151" }}>{item}</span>
+                    <span style={{ color: "rgba(255,255,255,0.82)" }}>{item}</span>
                   </motion.li>
                 ))}
               </motion.ul>
@@ -735,17 +785,18 @@ export default function NeuroDesignShowcase() {
                 <div
                   className="rounded-3xl p-8 relative overflow-hidden"
                   style={{
-                    background: "linear-gradient(135deg, #0D1B2A, #1A2B3C)",
-                    border: "1px solid rgba(210,105,30,0.22)",
+                    background: "rgba(8,17,30,0.65)",
+                    border: "1px solid rgba(210,105,30,0.28)",
+                    backdropFilter: "blur(28px)",
                   }}
                 >
                   <motion.div
                     className="absolute inset-0 rounded-3xl pointer-events-none"
                     animate={{
                       background: [
-                        "radial-gradient(circle at 0% 0%, rgba(210,105,30,0.09), transparent 55%)",
-                        "radial-gradient(circle at 100% 100%, rgba(210,105,30,0.09), transparent 55%)",
-                        "radial-gradient(circle at 0% 0%, rgba(210,105,30,0.09), transparent 55%)",
+                        "radial-gradient(circle at 0% 0%, rgba(210,105,30,0.12), transparent 55%)",
+                        "radial-gradient(circle at 100% 100%, rgba(210,105,30,0.12), transparent 55%)",
+                        "radial-gradient(circle at 0% 0%, rgba(210,105,30,0.12), transparent 55%)",
                       ],
                     }}
                     transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -754,8 +805,8 @@ export default function NeuroDesignShowcase() {
                   <motion.div
                     className="w-14 h-14 rounded-2xl mb-5 flex items-center justify-center"
                     style={{
-                      background: "rgba(210,105,30,0.12)",
-                      border: "1px solid rgba(210,105,30,0.25)",
+                      background: "rgba(210,105,30,0.15)",
+                      border: "1px solid rgba(210,105,30,0.32)",
                     }}
                     animate={{ rotateY: [0, 360] }}
                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
@@ -764,10 +815,10 @@ export default function NeuroDesignShowcase() {
                   </motion.div>
 
                   <h3 className="text-xl font-extrabold text-white mb-3">Nosso Objetivo</h3>
-                  <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.62)" }}>
+                  <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.72)" }}>
                     Posicionar voce como uma{" "}
                     <motion.span
-                      style={{ color: "#D2691E" }}
+                      style={{ color: "#FFB347" }}
                       animate={{ opacity: [0.65, 1, 0.65] }}
                       transition={{ duration: 2.2, repeat: Infinity }}
                     >
@@ -780,7 +831,7 @@ export default function NeuroDesignShowcase() {
                   <div
                     className="absolute bottom-0 left-0 right-0 h-px"
                     style={{
-                      background: "linear-gradient(90deg, transparent, rgba(210,105,30,0.5), transparent)",
+                      background: "linear-gradient(90deg, transparent, rgba(210,105,30,0.6), transparent)",
                     }}
                   />
                 </div>

@@ -111,6 +111,33 @@
   100% { background-position: 200% center; }
 }
 
+@keyframes tile-fly {
+  0%, 19%  { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  29%, 58% { transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scale(0.08); opacity: 0; }
+  100%     { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+}
+.tile-anim {
+  animation: tile-fly 10s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes blueprint-fade {
+  0%, 24%  { opacity: 0; }
+  36%, 55% { opacity: 1; }
+  70%      { opacity: 0; }
+  100%     { opacity: 0; }
+}
+.blueprint-anim {
+  animation: blueprint-fade 10s ease-in-out infinite;
+}
+
+@keyframes cam-pan {
+  0%   { transform: scale(1.08) translateX(0%); }
+  50%  { transform: scale(1.06) translateX(-4%); }
+  100% { transform: scale(1.08) translateX(0%); }
+}
+.cam-pan { animation: cam-pan 14s ease-in-out infinite; }
+
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-14px); }
